@@ -1,4 +1,4 @@
-package SeleniumScrapper;
+package Selenium-Scrapper;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -17,7 +17,7 @@ public class CountryStatScrapper {
 	public static void main(String[] args) throws Exception{
 		WebDriver driver = new FirefoxDriver();
 		driver.get("http://www.fifa.com/worldcup/teams/index.html"); // countries
-        PrintWriter writer = new PrintWriter("/u/jeremiah/CountryStatsMessingAround.txt");
+        PrintWriter writer = new PrintWriter("/u/jeremiah/CountryStatsUpdated.txt");
         
         // gets clickable links to countries on the bottom of the page
         List<WebElement> countries = driver.findElements(

@@ -1,4 +1,4 @@
-package testing;
+package SeleniumScrapper;
 
 import java.io.File;
 import java.io.PrintWriter;
