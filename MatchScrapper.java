@@ -2,21 +2,23 @@ package SeleniumScrapper;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class MatchScrapper {
 	public static void main(String[] args) throws Exception{
 		WebDriver driver = new FirefoxDriver();
-		driver.get("http://www.fifa.com/worldcup/matches/index.html"); // countries
+		driver.get("http://www.fifa.com/worldcup/matches/index.html"); // matches
         PrintWriter writer = new PrintWriter("/u/jeremiah/MatchStats.txt");
+
         
         // gotta get a list of the countries, but like with CountryStatScrapper,
         // have to copy the urls and names before we advance with the driver.
@@ -28,60 +30,85 @@ public class MatchScrapper {
         for (int i = startDate; i < 20140714; i++) {
         	
         	try {
-	        	date = new Integer(i);
+	        	date = new Integer(i); // need this to be able to cast the int to a string
 	        	countryLinks = driver.findElements(By.xpath(
 	        			"//div[@class='matches']//div[@id='" + date.toString() + "']//a"));
+	        	
+	        	//countryLinks can contain multiple matches
 	        	for (int k = 0; k < countryLinks.size(); k++) {
-	        		countryURL = countryLinks.get(k).getAttribute("href");
+	        		countryURL = countryLinks.get(k).getAttribute("href"); // href attribute contains the link
 	            	containerOfAllMatches.add(countryURL);
 	        	}
         	} catch (NoSuchElementException e) {
-        		
+        		// this is here for the bad links that will be created.
+        		// the loop goes through invalid dates which will throw this exception
         	}
-        	
         }
         System.out.printf("%d\n", containerOfAllMatches.size());
+        assert (containerOfAllMatches.size() == 64);
         
-        // can change this to a for each loop :D
-        for (String url : containerOfAllMatches) {
-        	driver.get(url);
-        	driver.manage().timeouts().implicitlyWait(2, TimeUnit.SECONDS);
+        String countryA;
+        String countryB;
+        System.out.print("{");
+        writer.print("{");
+        for (int i = 0; i < containerOfAllMatches.size(); i++) {
+        	String url = containerOfAllMatches.get(i);
         	
-        	// I think it's freezing right here. It takes too long to find this link.
-        	WebElement page = driver.findElement(// By.id("mitem-statistics"));
-        			By.xpath("//div[@class='nav-wrap']//li[@id='mitem-statistics']" +
-        					"//a[@data-ref='#statistics']"));
+        	// the link stays the same for the match statistics except for the end (very handy)
+        	url = url.replaceFirst("index.html#nosticky", "statistics.html#nosticky");
+        	
+        	// don't know why, but using the same driver isn't working. Have to create a new one.
+        	// it would navigate the pages but the information printed was the same.
+        	// maybe it was a property of those certain pages? try commenting out the close and new to see what I mean
+        	driver.close();
+        	driver = new FirefoxDriver();
+        	driver.get(url);
+        	driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+ 
+        	List<WebElement> countryNames = driver.findElements(By.xpath(
+        			"//div[@class='container']//div[@class='mh-m']//div[@class='t-n']"));
 
-        	page.click();
-        	driver.manage().timeouts().implicitlyWait(2, TimeUnit.SECONDS);
-        	// good above this point.
+        	assert (countryNames.size() == 2);
+        	
+        	countryA = countryNames.get(0).findElement(By.cssSelector("span")).getText().toLowerCase();
+        	countryB = countryNames.get(1).findElement(By.cssSelector("span")).getText().toLowerCase();
+        	
+        	System.out.print("\"" + countryA + "-" + countryB + "\" : [");
+        	writer.print("\"" + countryA + "-" + countryB + "\":[");
         	
         	getStatsFromTable(driver, "//div[@id='attacking' and @class='anchor']", writer);
         	getStatsFromTable(driver, "//div[@id='defending' and @class='anchor']", writer);
+        	writer.print("],");
         }
-//        driver.close();
+        System.out.print("}");
+        writer.print("}");
+        driver.close();
+        writer.close();
 	}
 
 	private static void getStatsFromTable(WebDriver driver, String xpath, PrintWriter writer) {
-		// TODO Auto-generated method stub
 		List<WebElement> rows = driver.findElements(By.xpath(
 				xpath + "//table//tr[@data-codeid]"));
-//		System.out.printf("how many rows: %d \n", rows.size());
+		while (rows.size() < 1) {
+			rows = driver.findElements(By.xpath(
+					xpath + "//table//tr[@data-codeid]"));
+		}
+		
+		assert (rows.size() == 5 || rows.size() == 6);
+		
+		System.out.printf("how many rows: %d \n", rows.size());
 		for (WebElement row : rows) {
 
 			List<WebElement> rowStats = row.findElements(By.cssSelector("td"));
-//			System.out.printf("elements in row: %d \n", rowStats.size());
 			
-			System.out.print(rowStats.get(2).getText() + " ");
-			System.out.print(rowStats.get(1).getText() + " ");
-			System.out.println(rowStats.get(3).getText());
+			// index 0 and 4 are useless
+			System.out.print(rowStats.get(2).getText() + " "); // name of stat
+			System.out.print(rowStats.get(1).getText() + " "); // home stat
+			System.out.print(rowStats.get(3).getText() + ", "); // away stat
+			writer.print(rowStats.get(1).getText() + ",");
+			writer.print(rowStats.get(3).getText() + ",");
 		}
-		
-	}
-	
-	private static void getStatsFromDisciplinary(WebElement container, PrintWriter writer) {
-		// TODO Auto-generated method stub
-		
+		System.out.println();
 	}
 	
 }
